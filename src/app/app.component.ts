@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import html2canvas from 'html2canvas';
-import { from, map, Observable, tap } from 'rxjs';
+import { delay, from, map, Observable, tap } from 'rxjs';
 import { NgxExtendedPdfViewerModule } from 'ngx-extended-pdf-viewer';
 
 @Component({
@@ -16,26 +16,59 @@ export class AppComponent {
 
   public screenshot: string | undefined;
 
-  constructor(
-    private cd: ChangeDetectorRef,
-  ) {}
+  constructor(private cd: ChangeDetectorRef) {}
 
   public makeScreenshot(): void {
+    this.screenshot = undefined;
+    const canvasPdf: HTMLCanvasElement | null = document.querySelector(
+      '.canvasWrapper canvas'
+    );
+
+    if (canvasPdf) {
+      const img = new Image();
+
+      img.onload = () => {
+        // img.style.width = `${canvasPdf.parentElement?.clientWidth || 0}px`;
+        // img.style.height = `${canvasPdf.parentElement?.clientHeight || 0}px`;
+        // img.style.display = 'none';
+        // document.body.appendChild(img)
+      };
+
+      img.src = canvasPdf.toDataURL('image/png', 0.6);
+    }
+
     from(
       html2canvas(document.body, {
         useCORS: true,
         scrollY: 0,
-        allowTaint: true,
+        allowTaint: false,
         foreignObjectRendering: true,
         scale: 1,
-      })
-    ).pipe(
-      map((canvas: HTMLCanvasElement) => canvas.toDataURL()),
-      tap((screenshot: string) => {
-        this.screenshot = screenshot;
-        this.cd.detectChanges();
+        logging: true,
+        ignoreElements(element: Element) {
+          return element.classList.contains('screenshot-container');
+        },
+        onclone(doc: Document) {
+          (doc.querySelector(
+            '.pdfViewer .page'
+          ) as HTMLDivElement)!.style.borderImage = 'none';
+
+          //  console.log(doc.querySelector('.pdfViewer .canvasWrapper img'));
+          //  debugger;
+        },
       })
     )
-    .subscribe();
+      .pipe(
+        tap((canvas: HTMLCanvasElement) => {
+          document.body.appendChild(canvas)
+        }),
+        // map((canvas: HTMLCanvasElement) => {
+        //   return canvas.toDataURL();
+        // }),
+        // tap((screenshot: string) => {
+        //   this.screenshot = screenshot;
+        // })
+      )
+      .subscribe();
   }
 }
